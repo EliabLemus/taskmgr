@@ -1,10 +1,5 @@
 FROM python:3.11-slim
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
 # Set working directory
 WORKDIR /code
 
@@ -23,8 +18,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/code
 
 # Run migrations and start server
-CMD cd /code && \
-    python app/manage.py migrate --noinput && \
+CMD python app/manage.py migrate --noinput && \
     python app/manage.py collectstatic --noinput && \
     cd app && \
     gunicorn app.wsgi:application \

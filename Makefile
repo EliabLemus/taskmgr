@@ -3,36 +3,45 @@ VENV := venv
 PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
-ACTIVATE := source $(VENV)/bin/activate
 
 # Check if Docker services are running
 SERVICES_RUNNING := $(shell docker compose ps --services --filter "status=running" 2>/dev/null | wc -l | tr -d ' ')
 
-.PHONY: help compose-up compose-down compose-build compose-logs compose-status shell migrate test test-unit test-integration test-phase0 lint docker-build docker-push bench clean venv check-services
+.PHONY: help compose-up compose-down compose-build compose-logs compose-status shell migrate makemigrations createsuperuser test test-all test-unit test-integration test-phase0 test-phase1 test-cov lint format docker-build clean venv check-services
 
 help:
 	@echo "Available targets:"
-	@echo "  venv              - Create/verify virtual environment"
+	@echo ""
+	@echo "Docker & Services:"
 	@echo "  compose-up        - Start all services"
 	@echo "  compose-down      - Stop all services"
 	@echo "  compose-build     - Build Docker images"
-	@echo "  compose-logs      - Tail logs"
+	@echo "  compose-logs      - Tail API logs"
 	@echo "  compose-status    - Check services status"
-	@echo "  check-services    - Verify services are running (internal)"
+	@echo ""
+	@echo "Django:"
 	@echo "  shell             - Django shell"
 	@echo "  migrate           - Run migrations"
+	@echo "  makemigrations    - Create new migrations"
+	@echo "  createsuperuser   - Create Django superuser"
+	@echo ""
+	@echo "Testing:"
 	@echo "  test              - Run all tests (auto-starts services)"
+	@echo "  test-all          - Run all tests (same as test)"
+	@echo "  test-phase0       - Run Phase 0 infrastructure tests"
+	@echo "  test-phase1       - Run Phase 1 API tests"
 	@echo "  test-unit         - Run unit tests only"
-	@echo "  test-integration  - Run integration tests (auto-starts services)"
-	@echo "  test-phase0       - Run Phase 0 verification tests (auto-starts services)"
+	@echo "  test-integration  - Run integration tests only"
+	@echo "  test-cov          - Run tests with coverage report"
+	@echo ""
+	@echo "Code Quality:"
 	@echo "  lint              - Run linters"
 	@echo "  format            - Format code with black and isort"
-	@echo "  docker-build      - Build production image"
-	@echo "  docker-push       - Push to Docker Hub"
-	@echo "  bench             - Run Apache Bench load test"
-	@echo "  clean             - Clean up containers and volumes"
+	@echo ""
+	@echo "Other:"
+	@echo "  venv              - Create/verify virtual environment"
+	@echo "  clean             - Clean up containers and cache"
 
-# Ensure virtual environment exists
 venv:
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "Creating virtual environment..."; \
@@ -44,7 +53,6 @@ venv:
 		echo "✓ Virtual environment already exists"; \
 	fi
 
-# Check if services are running, start them if not
 check-services:
 	@echo "Checking Docker services..."
 	@if [ "$(SERVICES_RUNNING)" -lt "4" ]; then \
@@ -59,7 +67,6 @@ check-services:
 	fi
 
 compose-status:
-	@echo "Docker services status:"
 	@docker compose ps
 
 compose-up:
@@ -67,12 +74,11 @@ compose-up:
 	@echo "Waiting for services to be ready..."
 	@sleep 10
 	@echo ""
-	@echo "Services started. Access points:"
+	@echo "✓ Services started:"
 	@echo "  API: http://localhost:8000"
+	@echo "  Docs: http://localhost:8000/api/v1/docs/"
 	@echo "  Grafana: http://localhost:3000 (admin/admin)"
 	@echo "  Prometheus: http://localhost:9090"
-	@echo ""
-	@echo "Verify with: make compose-status"
 
 compose-down:
 	docker compose down
@@ -84,31 +90,50 @@ compose-logs:
 	docker compose logs -f api
 
 shell:
-	docker compose exec api python manage.py shell
+	docker compose exec api python app/manage.py shell
 
 migrate:
-	docker compose exec api python manage.py migrate
+	docker compose exec api python app/manage.py migrate
 
-# Test targets - use venv pytest and ensure services are running
+makemigrations:
+	docker compose exec api python app/manage.py makemigrations
+
+createsuperuser:
+	docker compose exec api python app/manage.py createsuperuser
+
+# Test targets - NOW WITH AUTO SERVICE START
 test: venv check-services
-	@echo "Running all tests..."
-	$(PYTEST) tests/ -v
+	@echo "Running ALL tests (Phase 0 + Phase 1)..."
+	@echo ""
+	PYTHONPATH=./app:. $(PYTEST) tests/ -v --tb=short
 
-test-unit: venv
-	@echo "Running unit tests (no services needed)..."
-	$(PYTEST) tests/ -v -m unit
-
-test-integration: venv check-services
-	@echo "Running integration tests..."
-	$(PYTEST) tests/ -v -m integration
+test-all: test
 
 test-phase0: venv check-services
-	@echo "Running Phase 0 verification tests..."
-	@echo "Services will be auto-started if not running..."
+	@echo "Running Phase 0 infrastructure tests..."
 	@echo ""
 	$(PYTEST) tests/test_phase0_verification.py -v --tb=short
 
-# Lint targets - use venv tools
+test-phase1: venv
+	@echo "Running Phase 1 API tests..."
+	@echo ""
+	PYTHONPATH=./app:. $(PYTEST) tests/test_phase1_*.py -v --tb=short
+
+test-unit: venv
+	@echo "Running unit tests..."
+	PYTHONPATH=./app:. $(PYTEST) tests/ -v -m unit
+
+test-integration: venv check-services
+	@echo "Running integration tests..."
+	PYTHONPATH=./app:. $(PYTEST) tests/ -v -m integration
+
+test-cov: venv check-services
+	@echo "Running tests with coverage..."
+	@echo ""
+	PYTHONPATH=./app:. $(PYTEST) tests/ -v --cov=app/tasks --cov-report=html --cov-report=term
+	@echo ""
+	@echo "Coverage report: htmlcov/index.html"
+
 lint: venv
 	@echo "Running linters..."
 	@$(VENV)/bin/flake8 app/ --max-line-length=120 --exclude=migrations || true
@@ -119,25 +144,21 @@ format: venv
 	@echo "Formatting code..."
 	$(VENV)/bin/black app/ tests/
 	$(VENV)/bin/isort app/ tests/
+	@echo "✓ Code formatted"
 
 docker-build:
 	docker build -f infra/docker/Dockerfile -t taskmgr:latest .
 
-docker-push:
-	@echo "Configure DOCKERHUB_USERNAME first"
-	# docker tag taskmgr:latest $(DOCKERHUB_USERNAME)/taskmgr:latest
-	# docker push $(DOCKERHUB_USERNAME)/taskmgr:latest
-
-bench:
-	@echo "Apache Bench load test - Phase 3"
-
 clean:
+	@echo "Cleaning up..."
 	docker compose down -v
-	rm -rf reports/*.log
+	rm -rf reports/*.log reports/*.html
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf htmlcov/ .coverage
+	@echo "✓ Cleanup complete"
 
 clean-venv:
 	rm -rf $(VENV)
-	@echo "Virtual environment removed. Run 'make venv' to recreate."
