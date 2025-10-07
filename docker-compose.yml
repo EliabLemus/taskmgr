@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+    container_name: taskmgr-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      - REDIS_URL=${REDIS_URL}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT}
+    volumes:
+      - ./app:/app
+      - sqlite_data:/data
+    depends_on:
+      - redis
+    networks:
+      - taskmgr-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskmgr-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - taskmgr-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: taskmgr-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/compose/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - taskmgr-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: taskmgr-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./infra/compose/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./infra/compose/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - taskmgr-network
+    restart: unless-stopped
+
+networks:
+  taskmgr-network:
+    driver: bridge
+
+volumes:
+  sqlite_data:
+  prometheus_data:
+  grafana_data:
