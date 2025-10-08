@@ -101,7 +101,6 @@ makemigrations:
 createsuperuser:
 	docker compose exec api python app/manage.py createsuperuser
 
-# Test targets - NOW WITH AUTO SERVICE START
 test: venv check-services
 	@echo "Running ALL tests (Phase 0 + Phase 1)..."
 	@echo ""
@@ -134,36 +133,20 @@ test-cov: venv check-services
 	@echo ""
 	@echo "Coverage report: htmlcov/index.html"
 
+# FIXED: Only use black for both formatting and linting
+format: venv
+	@echo "Formatting code with black..."
+	$(VENV)/bin/black app/ tests/
+	@echo "✓ Code formatted"
+
 lint: venv
 	@echo "Running linters..."
-	@$(VENV)/bin/flake8 app/ --max-line-length=120 --exclude=migrations || true
-	@$(VENV)/bin/black --check app/ tests/ || true
-
-format: venv
-	@echo "Formatting code..."
-	$(VENV)/bin/isort app/ tests/
-	$(VENV)/bin/black app/ tests/
-
-	@echo "✓ Code formatted"
+	@$(VENV)/bin/flake8 app/ --max-line-length=120 --exclude=migrations
+	@$(VENV)/bin/black --check app/ tests/
 
 docker-build:
 	docker build -f infra/docker/Dockerfile -t taskmgr:latest .
 
-clean:
-	@echo "Cleaning up..."
-	docker compose down -v
-	rm -rf reports/*.log reports/*.html
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	rm -rf htmlcov/ .coverage
-	@echo "✓ Cleanup complete"
-
-clean-venv:
-	rm -rf $(VENV)
-
-# Docker Hub commands (Phase 4)
 docker-login:
 	@echo "Login to Docker Hub..."
 	@read -p "Docker Hub Username: " username; \
@@ -189,4 +172,17 @@ docker-push:
 	echo "✓ Pushed to Docker Hub"
 
 docker-release: docker-build-prod docker-tag docker-push
-	@echo "✓ Complete release to Docker Hub"
+
+clean:
+	@echo "Cleaning up..."
+	docker compose down -v
+	rm -rf reports/*.log reports/*.html
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf htmlcov/ .coverage
+	@echo "✓ Cleanup complete"
+
+clean-venv:
+	rm -rf $(VENV)

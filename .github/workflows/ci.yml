@@ -41,10 +41,6 @@ jobs:
     - name: Run black (check only)
       run: |
         black --check app/ tests/
-    
-    - name: Run isort (check only)
-      run: |
-        isort --check-only app/ tests/
 
   test:
     name: Run Tests
