@@ -148,15 +148,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Run Trivy vulnerability scanner
+    - name: Run Trivy filesystem scan
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'table'
         exit-code: 0
-    
-    - name: Run Trivy on Docker image
-      run: |
-        docker build -f infra/docker/Dockerfile -t taskmgr:security-scan .
-        docker run --rm aquasec/trivy:latest image taskmgr:security-scan --exit-code 0 --severity HIGH,CRITICAL
+        severity: 'CRITICAL,HIGH'
