@@ -15,7 +15,7 @@ services:
       - GUNICORN_WORKERS=${GUNICORN_WORKERS}
       - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT}
     volumes:
-      - ./app:/code/app
+      - .:/code:cached
       - sqlite_data:/data
     depends_on:
       - redis
