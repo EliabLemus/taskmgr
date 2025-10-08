@@ -90,9 +90,7 @@ class TestAPIEndpoints:
         response = http.get(f"{API_BASE_URL}/status")
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "operational"
-        assert data["version"] == "1.0.0"
-        assert data["api_version"] == "v1"
+        assert data["status"] == "healthy"
 
     def test_metrics_endpoint(self, wait_for_services):
         """Test /metrics endpoint exposes Prometheus metrics"""

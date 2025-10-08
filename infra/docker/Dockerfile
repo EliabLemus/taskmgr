@@ -10,10 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and build wheels for ALL dependencies
-COPY requirements.txt .
+# Copy requirements and build wheels
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --upgrade pip
 RUN pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements.txt
+RUN pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements-dev.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim
@@ -24,22 +25,25 @@ LABEL description="Task Manager API - Production Ready Django REST Framework"
 # Create non-root user
 RUN useradd -m -u 1000 appuser
 
+# Set working directory to /code
 WORKDIR /code
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels from builder and install
 COPY --from=builder /build/wheels /wheels
-COPY requirements.txt .
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir /wheels/*.whl && \
     rm -rf /wheels
 
 # Copy application code
-COPY --chown=appuser:appuser . /code/
+# Important: Copy app/ to /code/app/
+COPY --chown=appuser:appuser app/ /code/app/
+COPY --chown=appuser:appuser conftest.py pytest.ini /code/
 
 # Create data directory for SQLite
 RUN mkdir -p /data && chown appuser:appuser /data
@@ -58,6 +62,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run migrations and start server (JSON format to fix warning)
-CMD ["sh", "-c", "python app/manage.py migrate --noinput && python app/manage.py collectstatic --noinput && gunicorn app.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-60} --access-logfile - --error-logfile -"]
-
+# Run migrations and start server
+# Note: manage.py is at /code/app/manage.py
+CMD ["sh", "-c", "python /code/app/manage.py migrate --noinput && python /code/app/manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-3} --timeout ${GUNICORN_TIMEOUT:-60} --chdir /code/app wsgi:application --access-logfile - --error-logfile -"]

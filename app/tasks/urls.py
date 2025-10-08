@@ -1,18 +1,15 @@
-"""
-URL configuration for tasks app
-"""
-from django.urls import include, path
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
 from .views import TaskViewSet, UserRegistrationView
+from .views_metrics import metrics_summary
+from .views_alerts import AlertViewSet
 
-# Create router for ViewSets
 router = DefaultRouter()
-router.register(r"tasks", TaskViewSet, basename="task")
+router.register("tasks", TaskViewSet, basename="task")
+router.register("alerts", AlertViewSet, basename="alert")
 
 urlpatterns = [
-    # User registration
-    path("auth/register/", UserRegistrationView.as_view(), name="user-register"),
-    # Task endpoints (via router)
+    path("auth/register/", UserRegistrationView.as_view(), name="register"),
+    path("metrics/summary/", metrics_summary, name="metrics-summary"),
     path("", include(router.urls)),
 ]

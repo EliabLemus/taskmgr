@@ -186,3 +186,8 @@ clean:
 
 clean-venv:
 	rm -rf $(VENV)
+
+# Phase 2: Metrics & Alerts Tests
+test-phase2: venv check-services
+	@echo "Running Phase 2 metrics tests..."
+	PYTHONPATH=./app:. $(PYTEST) tests/test_phase2_*.py -v --tb=short

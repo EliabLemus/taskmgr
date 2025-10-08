@@ -1,65 +1,52 @@
-"""
-Django filters for Task queryset filtering
-"""
+import django_filters
 from django_filters import rest_framework as filters
-
 from .models import Task
 
 
 class TaskFilter(filters.FilterSet):
-    """
-    FilterSet for Task model with multiple filter options
-    """
+    """Custom filter for Task model"""
 
     status = filters.ChoiceFilter(
-        choices=Task.Status.choices, help_text="Filter by task status"
+        field_name="status",
+        choices=Task.STATUS_CHOICES,
+        help_text="Filter by task status",
     )
+
     priority = filters.ChoiceFilter(
-        choices=Task.Priority.choices, help_text="Filter by task priority"
+        field_name="priority",
+        choices=Task.PRIORITY_CHOICES,
+        help_text="Filter by task priority",
     )
+
     created_after = filters.DateTimeFilter(
         field_name="created_at",
         lookup_expr="gte",
-        help_text="Filter tasks created after this date",
+        help_text="Filter tasks created after this datetime",
     )
+
     created_before = filters.DateTimeFilter(
         field_name="created_at",
         lookup_expr="lte",
-        help_text="Filter tasks created before this date",
+        help_text="Filter tasks created before this datetime",
     )
+
     due_after = filters.DateTimeFilter(
         field_name="due_date",
         lookup_expr="gte",
-        help_text="Filter tasks due after this date",
+        help_text="Filter tasks due after this datetime",
     )
+
     due_before = filters.DateTimeFilter(
         field_name="due_date",
         lookup_expr="lte",
-        help_text="Filter tasks due before this date",
-    )
-    is_overdue = filters.BooleanFilter(
-        method="filter_overdue", help_text="Filter overdue tasks"
+        help_text="Filter tasks due before this datetime",
     )
 
     class Meta:
         model = Task
-        fields = ["status", "priority"]
-
-    def filter_overdue(self, queryset, name, value):
-        """
-        Custom filter for overdue tasks
-        """
-        from django.utils import timezone
-
-        if value:
-            # Return tasks that are overdue (due_date in past and not done)
-            return queryset.filter(due_date__lt=timezone.now()).exclude(
-                status=Task.Status.DONE
-            )
-        else:
-            # Return tasks that are not overdue
-            return (
-                queryset.filter(due_date__gte=timezone.now())
-                | queryset.filter(due_date__isnull=True)
-                | queryset.filter(status=Task.Status.DONE)
-            )
+        fields = {
+            "status": ["exact"],
+            "priority": ["exact"],
+            "created_at": ["gte", "lte"],
+            "due_date": ["gte", "lte"],
+        }

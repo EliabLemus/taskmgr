@@ -1,130 +1,102 @@
-"""
-API Views for Task Manager
-"""
-from django.contrib.auth.models import User
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import generics, status, viewsets
-from rest_framework.authtoken.models import Token
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
-from .filters import TaskFilter
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from django.db.models import Count, Q
 from .models import Task
-from .pagination import CustomPageNumberPagination
+from .serializers import TaskSerializer, UserRegistrationSerializer
 from .permissions import IsOwner
-from .serializers import (
-    TaskCreateSerializer,
-    TaskListSerializer,
-    TaskSerializer,
-    TaskUpdateSerializer,
-    UserSerializer,
-)
+from .filters import TaskFilter
 
 
-class UserRegistrationView(generics.CreateAPIView):
-    """
-    API endpoint for user registration
-    """
+class UserRegistrationView(APIView):
+    """API endpoint for user registration"""
 
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        """Create user and return user data with token"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-
-        # Create token for the new user
-        token, created = Token.objects.get_or_create(user=user)
-
-        return Response(
-            {"user": UserSerializer(user).data, "token": token.key},
-            status=status.HTTP_201_CREATED,
-        )
+    def post(self, request):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
+            return Response(
+                {
+                    "user": {
+                        "username": user.username,
+                        "email": user.email,
+                    },
+                    "token": token.key,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
     """
-    API endpoint for Task CRUD operations
+    API endpoint for managing tasks
 
-    list: Get all tasks for the authenticated user
+    list: Get all tasks for authenticated user
     create: Create a new task
-    retrieve: Get a specific task by ID
-    update: Full update of a task
-    partial_update: Partial update of a task
+    retrieve: Get a specific task
+    update: Update a task (PUT)
+    partial_update: Partially update a task (PATCH)
     destroy: Delete a task
+    stats: Get task statistics
+    mark_done: Mark a task as done
     """
 
+    serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated, IsOwner]
-    pagination_class = CustomPageNumberPagination
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskFilter
     search_fields = ["title", "description"]
-    ordering_fields = ["created_at", "updated_at", "due_date", "priority", "status"]
+    ordering_fields = ["created_at", "updated_at", "due_date", "priority"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        """
-        Return tasks owned by the current user only
-        """
+        """Return tasks owned by the authenticated user"""
         return Task.objects.filter(owner=self.request.user)
 
-    def get_serializer_class(self):
-        """
-        Return appropriate serializer based on action
-        """
-        if self.action == "list":
-            return TaskListSerializer
-        elif self.action == "create":
-            return TaskCreateSerializer
-        elif self.action in ["update", "partial_update"]:
-            return TaskUpdateSerializer
-        return TaskSerializer
-
     def perform_create(self, serializer):
-        """
-        Set the owner to the current user when creating a task
-        """
+        """Set the owner to the current user when creating a task"""
         serializer.save(owner=self.request.user)
 
     @action(detail=False, methods=["get"])
     def stats(self, request):
         """
-        Custom endpoint to get task statistics for the current user
-        GET /api/v1/tasks/stats/
+        Get task statistics for the current user
+
+        Returns:
+        - total: Total number of tasks
+        - by_status: Count by status (TODO, IN_PROGRESS, DONE)
+        - by_priority: Count by priority (LOW, MEDIUM, HIGH)
         """
         queryset = self.get_queryset()
 
         stats = {
             "total": queryset.count(),
             "by_status": {
-                "todo": queryset.filter(status=Task.Status.TODO).count(),
-                "in_progress": queryset.filter(status=Task.Status.IN_PROGRESS).count(),
-                "done": queryset.filter(status=Task.Status.DONE).count(),
+                "TODO": queryset.filter(status="TODO").count(),
+                "IN_PROGRESS": queryset.filter(status="IN_PROGRESS").count(),
+                "DONE": queryset.filter(status="DONE").count(),
             },
             "by_priority": {
-                "low": queryset.filter(priority=Task.Priority.LOW).count(),
-                "medium": queryset.filter(priority=Task.Priority.MEDIUM).count(),
-                "high": queryset.filter(priority=Task.Priority.HIGH).count(),
+                "LOW": queryset.filter(priority="LOW").count(),
+                "MEDIUM": queryset.filter(priority="MEDIUM").count(),
+                "HIGH": queryset.filter(priority="HIGH").count(),
             },
-            "overdue": sum(1 for task in queryset if task.is_overdue),
         }
 
         return Response(stats)
 
     @action(detail=True, methods=["post"])
     def mark_done(self, request, pk=None):
-        """
-        Custom endpoint to mark a task as done
-        POST /api/v1/tasks/{id}/mark_done/
-        """
+        """Mark a task as done"""
         task = self.get_object()
-        task.status = Task.Status.DONE
+        task.status = "DONE"
         task.save()
-
         serializer = self.get_serializer(task)
         return Response(serializer.data)

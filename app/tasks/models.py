@@ -1,52 +1,31 @@
-"""
-Task model for the Task Manager API
-"""
-import uuid
-
-from django.contrib.auth.models import User
 from django.db import models
-from django.utils import timezone
+from django.contrib.auth.models import User
+import uuid
 
 
 class Task(models.Model):
-    """
-    Task model with status tracking and priority management
-    """
+    STATUS_CHOICES = [
+        ("TODO", "To Do"),
+        ("IN_PROGRESS", "In Progress"),
+        ("DONE", "Done"),
+    ]
+    PRIORITY_CHOICES = [
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+    ]
 
-    class Status(models.TextChoices):
-        TODO = "TODO", "To Do"
-        IN_PROGRESS = "IN_PROGRESS", "In Progress"
-        DONE = "DONE", "Done"
-
-    class Priority(models.TextChoices):
-        LOW = "LOW", "Low"
-        MEDIUM = "MEDIUM", "Medium"
-        HIGH = "HIGH", "High"
-
-    # Primary key
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    # Core fields
-    title = models.CharField(max_length=200, help_text="Task title")
-    description = models.TextField(blank=True, help_text="Detailed task description")
-
-    # Status tracking
-    status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.TODO, db_index=True
-    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="TODO")
     priority = models.CharField(
-        max_length=10, choices=Priority.choices, default=Priority.MEDIUM, db_index=True
+        max_length=20, choices=PRIORITY_CHOICES, default="MEDIUM"
     )
-
-    # Dates
-    due_date = models.DateTimeField(null=True, blank=True, help_text="Task due date")
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    due_date = models.DateTimeField(null=True, blank=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="tasks")
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    # Ownership
-    owner = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="tasks", help_text="Task owner"
-    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -57,11 +36,34 @@ class Task(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.title} ({self.get_status_display()})"
+        return f"{self.title} ({self.status})"
 
-    @property
-    def is_overdue(self):
-        """Check if task is overdue"""
-        if self.due_date and self.status != self.Status.DONE:
-            return timezone.now() > self.due_date
-        return False
+
+class Alert(models.Model):
+    """Store alert history"""
+
+    SEVERITY_CHOICES = [
+        ("INFO", "Info"),
+        ("WARNING", "Warning"),
+        ("ERROR", "Error"),
+        ("CRITICAL", "Critical"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
+    alert_type = models.CharField(max_length=100)
+    message = models.TextField()
+    metric_value = models.FloatField(null=True, blank=True)
+    threshold_value = models.FloatField(null=True, blank=True)
+    sent_to_slack = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["alert_type", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.severity}: {self.alert_type} at {self.created_at}"

@@ -245,9 +245,9 @@ class TestCustomActions:
 
         assert response.status_code == 200
         assert response.data["total"] == 3
-        assert response.data["by_status"]["todo"] == 1
-        assert response.data["by_status"]["in_progress"] == 1
-        assert response.data["by_status"]["done"] == 1
-        assert response.data["by_priority"]["high"] == 1
-        assert response.data["by_priority"]["medium"] == 1
-        assert response.data["by_priority"]["low"] == 1
+        assert response.data["by_status"]["TODO"] == 1
+        assert response.data["by_status"]["IN_PROGRESS"] == 1
+        assert response.data["by_status"]["DONE"] == 1
+        assert response.data["by_priority"]["HIGH"] == 1
+        assert response.data["by_priority"]["MEDIUM"] == 1
+        assert response.data["by_priority"]["LOW"] == 1

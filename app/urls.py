@@ -1,59 +1,33 @@
-"""
-Main URL configuration for Task Manager API
-"""
 from django.contrib import admin
-from django.http import JsonResponse
-from django.urls import include, path
+from django.urls import path, include
+from rest_framework.authtoken.views import obtain_auth_token
 from drf_spectacular.views import (
     SpectacularAPIView,
-    SpectacularRedocView,
     SpectacularSwaggerView,
+    SpectacularRedocView,
 )
-from rest_framework.authtoken.views import obtain_auth_token
-
-
-def health_check(request):
-    """Health check endpoint"""
-    return JsonResponse({"status": "healthy", "service": "taskmgr-api"})
-
-
-def status_check(request):
-    """Status check endpoint"""
-    return JsonResponse(
-        {"status": "operational", "version": "1.0.0", "api_version": "v1"}
-    )
-
+from app.tasks.views_health import health_check, status_check
 
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
-    # Health & Status
+    # Health & Status (no /api/v1/ prefix)
     path("health", health_check, name="health"),
     path("status", status_check, name="status"),
+    # API v1 - Tasks and Alerts
+    path("api/v1/", include("app.tasks.urls")),
+    # API v1 - Token authentication
+    path("api/v1/auth/token/", obtain_auth_token, name="api_token_auth"),
+    # API Documentation
+    path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/v1/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/v1/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"
+    ),
     # Prometheus metrics
     path("", include("django_prometheus.urls")),
-    # API v1
-    path(
-        "api/v1/",
-        include(
-            [
-                # Authentication
-                path("auth/token/", obtain_auth_token, name="api-token-auth"),
-                # Tasks & User Registration
-                path("", include("app.tasks.urls")),
-                # API Documentation
-                path("schema/", SpectacularAPIView.as_view(), name="schema"),
-                path(
-                    "docs/",
-                    SpectacularSwaggerView.as_view(url_name="schema"),
-                    name="swagger-ui",
-                ),
-                path(
-                    "redoc/",
-                    SpectacularRedocView.as_view(url_name="schema"),
-                    name="redoc",
-                ),
-            ]
-        ),
-    ),
 ]
