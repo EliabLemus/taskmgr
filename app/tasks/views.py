@@ -14,8 +14,13 @@ from .filters import TaskFilter
 from .models import Task
 from .pagination import CustomPageNumberPagination
 from .permissions import IsOwner
-from .serializers import (TaskCreateSerializer, TaskListSerializer,
-                          TaskSerializer, TaskUpdateSerializer, UserSerializer)
+from .serializers import (
+    TaskCreateSerializer,
+    TaskListSerializer,
+    TaskSerializer,
+    TaskUpdateSerializer,
+    UserSerializer,
+)
 
 
 class UserRegistrationView(generics.CreateAPIView):

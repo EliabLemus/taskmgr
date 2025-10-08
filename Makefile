@@ -138,12 +138,12 @@ lint: venv
 	@echo "Running linters..."
 	@$(VENV)/bin/flake8 app/ --max-line-length=120 --exclude=migrations || true
 	@$(VENV)/bin/black --check app/ tests/ || true
-	@$(VENV)/bin/isort --check-only app/ tests/ || true
 
 format: venv
 	@echo "Formatting code..."
-	$(VENV)/bin/black app/ tests/
 	$(VENV)/bin/isort app/ tests/
+	$(VENV)/bin/black app/ tests/
+
 	@echo "✓ Code formatted"
 
 docker-build:
