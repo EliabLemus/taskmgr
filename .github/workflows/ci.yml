@@ -153,11 +153,10 @@ jobs:
       with:
         scan-type: 'fs'
         scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+        format: 'table'
+        exit-code: 0
     
-    - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+    - name: Run Trivy on Docker image
+      run: |
+        docker build -f infra/docker/Dockerfile -t taskmgr:security-scan .
+        docker run --rm aquasec/trivy:latest image taskmgr:security-scan --exit-code 0 --severity HIGH,CRITICAL
