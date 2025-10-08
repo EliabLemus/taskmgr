@@ -40,7 +40,7 @@ urlpatterns = [
                 # Authentication
                 path("auth/token/", obtain_auth_token, name="api-token-auth"),
                 # Tasks & User Registration
-                path("", include("tasks.urls")),
+                path("", include("app.tasks.urls")),
                 # API Documentation
                 path("schema/", SpectacularAPIView.as_view(), name="schema"),
                 path(
