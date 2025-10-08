@@ -162,3 +162,31 @@ clean:
 
 clean-venv:
 	rm -rf $(VENV)
+
+# Docker Hub commands (Phase 4)
+docker-login:
+	@echo "Login to Docker Hub..."
+	@read -p "Docker Hub Username: " username; \
+	docker login -u $$username
+
+docker-build-prod:
+	@echo "Building production Docker image..."
+	docker build -f infra/docker/Dockerfile -t taskmgr:latest .
+	@echo "✓ Image built: taskmgr:latest"
+
+docker-tag:
+	@echo "Tagging image for Docker Hub..."
+	@read -p "Docker Hub Username: " username; \
+	read -p "Version (e.g., 1.0.0): " version; \
+	docker tag taskmgr:latest $$username/taskmgr:$$version; \
+	docker tag taskmgr:latest $$username/taskmgr:latest; \
+	echo "✓ Tagged: $$username/taskmgr:$$version and $$username/taskmgr:latest"
+
+docker-push:
+	@echo "Pushing to Docker Hub..."
+	@read -p "Docker Hub Username: " username; \
+	docker push $$username/taskmgr --all-tags; \
+	echo "✓ Pushed to Docker Hub"
+
+docker-release: docker-build-prod docker-tag docker-push
+	@echo "✓ Complete release to Docker Hub"

@@ -2,13 +2,54 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/* ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  lint-and-test:
+  lint:
+    name: Code Quality
     runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run flake8
+      run: |
+        flake8 app/ --max-line-length=120 --exclude=migrations --statistics
+    
+    - name: Run black (check only)
+      run: |
+        black --check app/ tests/
+    
+    - name: Run isort (check only)
+      run: |
+        isort --check-only app/ tests/
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
     
     services:
       redis:
@@ -22,37 +63,105 @@ jobs:
           --health-retries 5
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
     - name: Install dependencies
       run: |
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install -r requirements-dev.txt
     
-    - name: Run linters
-      run: |
-        flake8 app/ --max-line-length=120 --exclude=migrations
-        black --check app/
-    
-    - name: Run tests
-      run: |
-        pytest -v
+    - name: Run Phase 1 tests
       env:
-        DJANGO_SECRET_KEY: test-secret-key-for-ci
+        DJANGO_SECRET_KEY: ci-test-secret-key-do-not-use-in-production
         DJANGO_DEBUG: true
         REDIS_URL: redis://localhost:6379/0
+      run: |
+        PYTHONPATH=./app:. pytest tests/test_phase1_*.py -v --tb=short --junitxml=test-results.xml
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: test-results.xml
+    
+    - name: Run tests with coverage
+      env:
+        DJANGO_SECRET_KEY: ci-test-secret-key-do-not-use-in-production
+        DJANGO_DEBUG: true
+        REDIS_URL: redis://localhost:6379/0
+      run: |
+        PYTHONPATH=./app:. pytest tests/test_phase1_*.py --cov=app/tasks --cov-report=xml --cov-report=term
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
 
   build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: test
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
     - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./infra/docker/Dockerfile
+        push: false
+        tags: taskmgr:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker image
       run: |
-        docker build -f infra/docker/Dockerfile -t taskmgr:${{ github.sha }} .
+        docker build -f infra/docker/Dockerfile -t taskmgr:test .
+        docker run --rm taskmgr:test python app/manage.py check --deploy
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
