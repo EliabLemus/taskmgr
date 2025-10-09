@@ -137,11 +137,14 @@ REST_FRAMEWORK = {
     ],
 }
 
-# DRF Spectacular
+# Swagger UI settings
 SPECTACULAR_SETTINGS = {
     "TITLE": "Task Manager API",
-    "DESCRIPTION": "Production-ready Django REST API with monitoring and task management",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "COMPONENT_SPLIT_REQUEST": True,
+    "DESCRIPTION": "API para la gestión de tareas con métricas y alertas",
+    "VERSION": "1.1.0",
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "displayRequestDuration": True,
+        "filter": True,
+    },
 }

@@ -191,3 +191,21 @@ clean-venv:
 test-phase2: venv check-services
 	@echo "Running Phase 2 metrics tests..."
 	PYTHONPATH=./app:. $(PYTEST) tests/test_phase2_*.py -v --tb=short
+# Fase 3: Simulación de tráfico y bench
+traffic-sim: venv
+	@echo "Simulando tráfico..."
+	$(PYTHON) scripts/traffic_sim.py --rps 5 --duration 30 $(if $(token),--token $(token),)
+
+
+bench:
+	@echo "Ejecutando Apache Bench en el contenedor..."
+	docker compose exec api ab -n 500 -c 25 -p scripts/payload.json -T application/json \
+		http://localhost:8000/api/v1/tasks/ > reports/ab_benchmark.log
+	@echo "Log guardado en reports/ab_benchmark.log"
+
+parse-ab:
+	@echo "Parseando resultados de ab y publicando métricas..."
+	docker compose exec api python scripts/parse_ab_results.py reports/ab_benchmark.log
+
+# Agrupa bench + parse
+bench-full: bench parse-ab

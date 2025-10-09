@@ -1,0 +1,29 @@
+{
+  "id": null,
+  "title": "TaskMgr API Activity",
+  "time": {"from": "now-5m", "to": "now"},
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Requests per Second",
+      "targets": [
+        { "expr": "sum(rate(django_http_requests_total_by_method_total[1m]))", "legendFormat": "RPS" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Error Rate (%)",
+      "targets": [
+        {
+          "expr": "sum(rate(django_http_requests_total_by_method_total{status=~\"4..|5..\"}[1m])) / sum(rate(django_http_requests_total_by_method_total[1m])) * 100",
+          "legendFormat": "Error rate %"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "ab Requests/sec",
+      "targets": [ { "expr": "ab_requests_per_sec", "legendFormat": "AB RPS" } ]
+    }
+  ]
+}

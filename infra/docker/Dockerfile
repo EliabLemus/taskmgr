@@ -31,6 +31,7 @@ WORKDIR /code
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    apache2-utils \ 
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels from builder and install
