@@ -286,6 +286,25 @@ curl http://localhost:8000/api/v1/alerts/{id}/ \
 
 ---
 
+### OpenAPI Schema Formats
+
+The API exposes its OpenAPI specification at /api/v1/schema/ using content negotiation. You can obtain it in JSON or YAML based on the `format` parameter or the `Accept` header.
+
+- For JSON:
+  curl -s http://localhost:8000/api/v1/schema/?format=json | jq .
+  You can also use the header:
+  curl -s -H "Accept: application/vnd.oai.openapi+json" http://localhost:8000/api/v1/schema/ | jq .
+
+- For YAML:
+  curl -s http://localhost:8000/api/v1/schema/?format=yaml
+  Or with a header:
+  curl -s -H "Accept: application/vnd.oai.openapi" http://localhost:8000/api/v1/schema/
+
+This lets you switch between the JSON and YAML formats for the schema as needed.
+
+
+---
+
 ## 🗺️ API Endpoints
 
 ### Authentication & User Management

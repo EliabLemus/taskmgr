@@ -3,8 +3,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .metrics_aggregator import MetricsAggregator
+from drf_spectacular.utils import extend_schema
+from .serializers import MetricsSummarySerializer
 
 
+@extend_schema(responses=MetricsSummarySerializer, auth=[])
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def metrics_summary(request):

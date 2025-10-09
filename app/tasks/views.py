@@ -5,9 +5,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from .models import Task
-from .serializers import TaskSerializer, UserRegistrationSerializer
 from .permissions import IsOwner
 from .filters import TaskFilter
+from drf_spectacular.utils import extend_schema
+from .serializers import (
+    UserRegistrationSerializer,
+    TaskSerializer,
+    UserRegistrationResponseSerializer,
+    TaskStatsSerializer,
+)
 
 
 class UserRegistrationView(APIView):
@@ -15,6 +21,11 @@ class UserRegistrationView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=UserRegistrationSerializer,
+        responses={201: UserRegistrationResponseSerializer},
+        description="API endpoint for user registration",
+    )
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
@@ -62,6 +73,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         """Set the owner to the current user when creating a task"""
         serializer.save(owner=self.request.user)
 
+    @extend_schema(responses=TaskStatsSerializer)
     @action(detail=False, methods=["get"])
     def stats(self, request):
         """

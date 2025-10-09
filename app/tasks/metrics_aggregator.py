@@ -1,8 +1,11 @@
+import os
+import redis
 import logging
 from datetime import datetime, timedelta
 from django.core.cache import cache
 from .models import Alert
 from .slack_alerts import slack_alerter
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,7 @@ class MetricsAggregator:
         # Calculate latency percentiles
         latency_stats = cls._calculate_latency_stats(all_latencies)
 
-        return {
+        result = {
             "total_requests": total_requests,
             "total_errors": total_errors,
             "error_rate_percent": round(error_rate, 2),
@@ -66,6 +69,11 @@ class MetricsAggregator:
             "latency": latency_stats,
             "time_window": "5 minutes",
         }
+        # Obtener métricas de ab (si existen)
+        ab_metrics = cls._get_ab_metrics()
+        if ab_metrics:
+            result["ab_metrics"] = ab_metrics
+        return result
 
     @staticmethod
     def _calculate_latency_stats(latencies):
@@ -167,3 +175,26 @@ class MetricsAggregator:
 
         logger.info(f"Alert created: {alert_type} - {message}")
         return alert
+
+    @staticmethod
+    def _get_ab_metrics():
+        """
+        Recupera métricas de Apache Bench almacenadas en Redis.
+        Devuelve un diccionario con claves y valores convertidos a números cuando es posible.
+        """
+        try:
+            redis_url = os.environ.get(
+                "REDIS_URL", settings.CACHES["default"]["LOCATION"]
+            )
+            r = redis.Redis.from_url(redis_url)
+            raw = r.hgetall("ab_metrics")
+            metrics = {}
+            for k, v in raw.items():
+                key = k.decode() if isinstance(k, bytes) else k
+                try:
+                    metrics[key] = float(v)
+                except (ValueError, TypeError):
+                    metrics[key] = v.decode() if isinstance(v, bytes) else v
+            return metrics
+        except Exception:
+            return {}
