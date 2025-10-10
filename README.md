@@ -17,7 +17,7 @@
 ---
 
 ## 📋 Table of Contents
-
+- [Project Progress Overview](#-project-progress-overview)
 - [Features](#-features)
 - [Quick Stats](#-quick-stats)
 - [Quick Start](#-quick-start)
@@ -30,8 +30,88 @@
 - [What's Next](#-whats-next)
 
 ---
+---
 
+## 🧭 Project Progress Overview
+
+| Phase | Title | Description | Status |
+|:------|:-------|:-------------|:---------:|
+| **0** | 🏗️ Infrastructure | Docker Compose stack with Django, Redis, Prometheus, and Grafana | ✅ **Complete** |
+| **1** | 🔌 Django REST API | Core CRUD, authentication, filters, versioning, and Swagger UI | ✅ **Complete** |
+| **2** | 🎯 Metrics & Alerts | Prometheus metrics, Redis aggregation, Slack alerting, Grafana dashboards | ✅ **Complete** |
+| **3** | 💥 Traffic Simulation & Benchmarking | Apache Bench integration, Grafana load dashboards, Prometheus custom metrics | ✅ **Complete** |
+| **4** | ⚙️ CI/CD Pipeline | GitHub Actions workflows for lint, test, build, and Docker Hub publishing | ✅ **Complete** |
+| **5** | 🧩 Optional Extensions | Nginx reverse proxy, blue/green deployments, multi-environment configs | 🚧 **Planned** |
+
+**🏁 Current Milestone:** Phase **4 Complete** — CI/CD active with benchmark visualization integrated in Grafana.
+
+---
+
+---
 ## ✨ Features
+
+### 💥 Phase 3 – Traffic Simulation & Benchmarking ✅ **COMPLETE**
+
+<table>
+<tr>
+<td width="50%">
+
+#### Load Testing
+- ✅ Apache Bench integration (`make bench`)
+- ✅ Configurable payloads (`scripts/payload.json`)
+- ✅ Benchmark logs stored under `reports/ab_benchmark.log`
+- ✅ Automatic parsing via `scripts/parse_ab_results.py`
+
+</td>
+<td width="50%">
+
+#### Visualization & Alerts
+- ✅ Grafana dashboards showing AB history
+- ✅ Custom Prometheus queries and panels
+- ✅ Slack alerts for benchmark thresholds
+- ✅ Real-time feedback in `/api/v1/metrics/summary`
+- ✅ Integration with Phase 2 metrics middleware
+
+</td>
+</tr>
+</table>
+
+### ⚙️ Phase 4 – CI/CD Pipeline ✅ **COMPLETE**
+
+<table>
+<tr>
+<td width="50%">
+
+#### Continuous Integration
+- ✅ GitHub Actions workflow (`ci.yml`)
+- ✅ Linting (flake8, black)
+- ✅ Unit tests (pytest)
+- ✅ Coverage report generation
+- ✅ Branch protection rules
+
+</td>
+<td width="50%">
+
+#### Continuous Deployment
+- ✅ Docker Hub image publishing (`cd.yml`)
+- ✅ Version tagging (semantic versioning)
+- ✅ Build caching for faster pipelines
+- ✅ Slack notifications on deploy
+- ✅ Environment secrets (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `SLACK_WEBHOOK_URL`)
+
+</td>
+</tr>
+</table>
+
+**Pipeline Overview**
+| Stage | Description | Status |
+|--------|--------------|--------|
+| 🧪 **Test** | Run lint + test suite | ✅ |
+| 🐳 **Build** | Build multi-stage Docker image | ✅ |
+| 🚀 **Deploy** | Push tagged image to Docker Hub | ✅ |
+| 💬 **Notify** | Send Slack deployment message | ✅ |
+
+---
 
 ### 🎯 Phase 2 - Metrics & Alerts ✅ **COMPLETE**
 
@@ -40,77 +120,62 @@
 <td width="50%">
 
 #### Metrics & Monitoring
-- ✅ Custom metrics middleware
-- ✅ Redis-based storage with TTL
-- ✅ Per-minute aggregation
-- ✅ Real-time latency tracking
-- ✅ Error rate monitoring
-- ✅ Active user tracking
+- ✅ Custom metrics middleware  
+- ✅ Redis-based storage with TTL  
+- ✅ Per-minute aggregation  
+- ✅ Real-time latency tracking  
+- ✅ Error rate monitoring  
+- ✅ Active user tracking  
 
 </td>
 <td width="50%">
 
 #### Alerting System
-- ✅ Threshold-based alerts
-- ✅ Slack webhook integration
-- ✅ 5-minute cooldown
-- ✅ Alert history API
-- ✅ Multiple severity levels
-- ✅ Configurable thresholds
+- ✅ Threshold-based alerts  
+- ✅ Slack webhook integration  
+- ✅ 5-minute cooldown  
+- ✅ Alert history API  
+- ✅ Multiple severity levels  
+- ✅ Configurable thresholds  
 
 </td>
 </tr>
 </table>
 
-**Metrics Tracked:**
-- 📊 Total requests
-- ⚡ Response latency (min/max/avg/p50/p95/p99)
-- ❌ Error rate (%)
-- 👥 Active authenticated users
+**Metrics Tracked**
+- 📊 Total requests  
+- ⚡ Response latency (min/max/avg/p50/p95/p99)  
+- ❌ Error rate (%)  
+- 👥 Active authenticated users  
 
-**Alert Types:**
-- 🚨 High error rate (> 5%)
-- ⏱️ High latency (p95 > 500ms)
+**Alert Types**
+- 🚨 High error rate (> 5%)  
+- ⏱️ High latency (p95 > 500 ms)  
 
 ---
 
 ### 🔌 Phase 1 - REST API ✅ **COMPLETE**
 
-- ✅ **Full CRUD** - Complete task management
-- ✅ **Token Auth** - Secure user authentication
-- ✅ **Advanced Filtering** - Status, priority, dates, search
-- ✅ **Pagination** - Customizable page sizes
-- ✅ **Permissions** - User-scoped data access
-- ✅ **OpenAPI/Swagger** - Interactive documentation
-- ✅ **39 Tests** - Complete API coverage
+- ✅ **Full CRUD** — Complete task management  
+- ✅ **Token Auth** — Secure authentication  
+- ✅ **Advanced Filtering** — Status, priority, search  
+- ✅ **Pagination** — Configurable page sizes  
+- ✅ **Permissions** — User-scoped data access  
+- ✅ **OpenAPI/Swagger** — Interactive docs  
+- ✅ **39 Tests** — Complete API coverage  
 
 ---
 
 ### 🏗️ Phase 0 - Infrastructure ✅ **COMPLETE**
 
-- ✅ **Docker Compose** - Multi-container orchestration
-- ✅ **Prometheus** - Metrics collection
-- ✅ **Grafana** - Visualization dashboards
-- ✅ **Redis** - Caching & metrics storage
-- ✅ **CI/CD** - GitHub Actions pipelines
-- ✅ **15 Tests** - Infrastructure verification
+- ✅ **Docker Compose** — Multi-container orchestration  
+- ✅ **Prometheus** — Metrics collection  
+- ✅ **Grafana** — Visualization dashboards  
+- ✅ **Redis** — Caching & metrics storage  
+- ✅ **CI/CD** — GitHub Actions stubs (Phase 4 finalized)  
+- ✅ **15 Tests** — Infrastructure verification  
 
 ---
-
-## 📊 Quick Stats
-
-| Category | Metric | Status |
-|----------|--------|--------|
-| 🐍 Python | 3.11.9 | ✅ |
-| 🎯 Django | 4.2.16 LTS | ✅ |
-| ✅ Total Tests | **63/63 passing** | ✅ |
-| 📈 Coverage | 93% | ✅ |
-| 🌐 API Endpoints | 18+ | ✅ |
-| 🐳 Docker Services | 4 | ✅ |
-| 🚨 Active Alerts | 2 types | ✅ |
-
----
-
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -641,7 +706,7 @@ Built with ❤️ using:
 
 ### 📊 Current Status
 
-**Phase 2 Complete** ✅ | **63/63 Tests Passing** ✅ | **Production Ready** 🚀
+**Phase 4 Complete (CI/CD Pipeline)** ✅ | **Phase 3 Benchmarks Integrated** ✅ | **63/63 Tests Passing** ✅ | **Production Ready** 🚀
 
 [⬆ Back to Top](#-task-manager-api)
 
